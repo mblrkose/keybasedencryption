@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CipherDash — Keyword-Driven Encryption</title>
+  <meta name="description"
+    content="Encrypt and decrypt text using any keyword as your secret key. Deterministic, client-side, no math.random." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ─── Navbar ─────────────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="navbar-inner">
+        <a href="#" class="logo" aria-label="CipherDash home">
+          <div class="logo-icon" aria-hidden="true">🔐</div>
+          CipherDash
+        </a>
+        <ul class="nav-links" role="list">
+          <li><a href="#workspace">Workspace</a></li>
+          <li><a href="#how-it-works">How it works</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Hero ───────────────────────────────────────────────────────────────── -->
+  <header class="hero" id="top">
+    <div class="container">
+      <div class="hero-badge">
+        <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
+        Client-side only · No data leaves your browser
+      </div>
+      <h1>Encrypt with a <span>keyword</span>.<br />Decrypt with the same.</h1>
+      <p class="hero-sub">
+        Your key drives every transformation. Share the encrypted text anywhere —
+        only someone with the key can decode it.
+      </p>
+    </div>
+  </header>
+
+  <!-- ─── App Grid ───────────────────────────────────────────────────────────── -->
+  <main class="container" id="workspace">
+    <div class="app-grid">
+
+      <!-- LEFT: Key Panel -->
+      <aside>
+        <div class="card key-panel">
+          <p class="card-label">Encryption Key</p>
+
+          <!-- Key input -->
+          <div class="key-input-wrapper">
+            <input id="keyInput" type="password" class="key-input" placeholder="Type your secret key…"
+              autocomplete="off" spellcheck="false" aria-label="Secret key" maxlength="256" />
+            <button class="key-toggle-visibility" id="btnToggleKeyVisibility" title="Show/hide key"
+              aria-label="Toggle key visibility">
+              <i data-lucide="eye" id="iconEye" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+
+          <!-- Fingerprint row -->
+          <div class="fingerprint-row">
+            <div class="fingerprint-display">
+              <div class="status-dot" id="statusDot"></div>
+              <span class="fingerprint-text" id="fingerprint">No key entered</span>
+            </div>
+            <button class="btn-generate" id="btnGenKey"
+              title="Strengthen: expand your key into a longer derived key. Empty = random."
+              aria-label="Strengthen or generate key">
+              <i data-lucide="sparkles" style="width:13px;height:13px;"></i>
+              Strengthen
+            </button>
+          </div>
+        </div>
+
+        <!-- Saved Keys Card -->
+        <div class="card" style="margin-top: 16px;">
+          <div class="saved-keys-header">
+            <p class="card-label" style="margin-bottom:0;">Saved Keys</p>
+          </div>
+
+          <div class="saved-keys-list" id="savedKeysList">
+            <p class="empty-keys" id="emptyKeysMsg">No saved keys yet.</p>
+          </div>
+
+          <div class="save-key-row">
+            <input type="text" id="saveKeyName" class="save-key-input" placeholder="Name this key…" maxlength="40"
+              aria-label="Key name to save" />
+            <button class="btn-save-key" id="btnSaveKey" aria-label="Save current key">Save</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT: Workspace -->
+      <section class="workspace-panel" id="workspaceSection">
+
+        <!-- Mode Toggle -->
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div class="mode-toggle" role="group" aria-label="Encryption mode">
+            <button class="mode-btn active" id="btnEncrypt" aria-pressed="true">
+              <i data-lucide="lock" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px;"></i>
+              Encrypt
+            </button>
+            <button class="mode-btn" id="btnDecrypt" aria-pressed="false">
+              <i data-lucide="unlock" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px;"></i>
+              Decrypt
+            </button>
+          </div>
+        </div>
+
+        <!-- Text panels -->
+        <div class="card" style="padding: 20px;">
+          <div class="text-panels">
+            <!-- Input -->
+            <div class="text-panel">
+              <div class="panel-header">
+                <span class="panel-label" id="inputLabel">Plaintext</span>
+                <div class="panel-actions">
+                  <button class="btn-icon" id="btnPaste" title="Paste" aria-label="Paste from clipboard">
+                    <i data-lucide="clipboard" style="width:13px;height:13px;"></i>
+                  </button>
+                  <button class="btn-icon" id="btnClearInput" title="Clear" aria-label="Clear input">
+                    <i data-lucide="x" style="width:13px;height:13px;"></i>
+                  </button>
+                </div>
+              </div>
+              <textarea id="inputText" class="text-area" placeholder="Type or paste your message…"
+                aria-label="Input text" spellcheck="false"></textarea>
+              <div class="char-count" id="inputCharCount">0 characters</div>
+            </div>
+
+            <!-- Swap -->
+            <div class="swap-col">
+              <button class="btn-swap" id="btnSwap" title="Swap input and output" aria-label="Swap panels">
+                <i data-lucide="arrow-left-right" style="width:15px;height:15px;"></i>
+              </button>
+            </div>
+
+            <!-- Output -->
+            <div class="text-panel">
+              <div class="panel-header">
+                <span class="panel-label" id="outputLabel">Ciphertext</span>
+                <div class="panel-actions">
+                  <button class="btn-icon" id="btnCopyOutput" title="Copy output" aria-label="Copy output">
+                    <i data-lucide="copy" style="width:13px;height:13px;"></i>
+                  </button>
+                  <button class="btn-icon" id="btnClearOutput" title="Clear output" aria-label="Clear output">
+                    <i data-lucide="x" style="width:13px;height:13px;"></i>
+                  </button>
+                </div>
+              </div>
+              <textarea id="outputText" class="text-area" placeholder="Output will appear here…" readonly
+                aria-label="Output text" spellcheck="false"></textarea>
+              <div class="char-count" id="outputCharCount">0 characters</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Run button -->
+        <button class="btn-run" id="btnRun" aria-label="Run encryption or decryption">
+          <i data-lucide="zap" style="width:16px;height:16px;" id="btnRunIcon"></i>
+          <span id="btnRunText">Encrypt Now</span>
+        </button>
+        <p class="btn-run-hint">Press <kbd
+            style="font-family:var(--font-mono);font-size:0.7rem;background:var(--cream-dark);padding:2px 6px;border-radius:4px;border:1px solid var(--border);">Ctrl
+            + Enter</kbd> to run</p>
+
+        <!-- Rule Inspector -->
+        <div class="rule-inspector" id="ruleInspector">
+          <div class="rule-inspector-header" id="ruleInspectorHeader" role="button" aria-expanded="true" tabindex="0">
+            <span class="rule-inspector-title">🔬 Rule Inspector — Derived from key</span>
+            <i data-lucide="chevron-down" class="rule-inspector-chevron" style="width:14px;height:14px;"
+              id="ruleChevron"></i>
+          </div>
+          <div class="rule-inspector-grid" id="ruleGrid">
+            <div class="rule-item">
+              <div class="rule-item-label">Substitution</div>
+              <div class="rule-item-value empty" id="rl-sub">—</div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-item-label">Byte Shift</div>
+              <div class="rule-item-value empty" id="rl-shift">—</div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-item-label">Block Size</div>
+              <div class="rule-item-value empty" id="rl-block">—</div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-item-label">Reorder Seed</div>
+              <div class="rule-item-value empty" id="rl-reorder">—</div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-item-label">XOR Mask</div>
+              <div class="rule-item-value empty" id="rl-xor">—</div>
+            </div>
+            <div class="rule-item">
+              <div class="rule-item-label">Encoding</div>
+              <div class="rule-item-value empty" id="rl-enc">—</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- How it works -->
+    <section id="how-it-works" style="padding: 40px 0 60px;">
+      <p class="card-label" style="text-align:center;margin-bottom:24px;">How It Works</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+        <div class="card" style="text-align:center;padding:20px 16px;">
+          <div style="font-size:1.6rem;margin-bottom:10px;">🔑</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">1. Enter a Key</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);">Any word or phrase. It's hashed with SHA-256.</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 16px;">
+          <div style="font-size:1.6rem;margin-bottom:10px;">⚙️</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">2. Rules are Derived</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);">6 cipher parameters are built — unique to your key.
+          </div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 16px;">
+          <div style="font-size:1.6rem;margin-bottom:10px;">🔒</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">3. Transform</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);">Substitute → Shift → Reorder blocks → XOR.</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px 16px;">
+          <div style="font-size:1.6rem;margin-bottom:10px;">📨</div>
+          <div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">4. Share Safely</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);">Send the ciphertext. Share the key separately.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ─── Footer ─────────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        <span>CipherDash</span>
+        <span>·</span>
+        <span>100% client-side, no data stored</span>
+        <span>·</span>
+        <a href="#top">Back to top ↑</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ─── Toast Container ─────────────────────────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-label="Notifications"></div>
+
+  <!-- ─── Scripts ─────────────────────────────────────────────────────────────── -->
+  <script src="cipher.js"></script>
+  <script>
+    // ── Init Lucide icons
+    lucide.createIcons();
+
+    // ── State
+    let currentMode = 'encrypt'; // 'encrypt' | 'decrypt'
+    let currentSeed = null;
+    let currentRules = null;
+    let keyVisible = false;
+    let debounceTimer = null;
+
+    // ── DOM refs
+    const keyInput = document.getElementById('keyInput');
+    const btnToggleKeyVisibility = document.getElementById('btnToggleKeyVisibility');
+    const iconEye = document.getElementById('iconEye');
+    const statusDot = document.getElementById('statusDot');
+    const fingerprintEl = document.getElementById('fingerprint');
+    const btnGenKey = document.getElementById('btnGenKey');
+    const savedKeysList = document.getElementById('savedKeysList');
+    const emptyKeysMsg = document.getElementById('emptyKeysMsg');
+    const saveKeyName = document.getElementById('saveKeyName');
+    const btnSaveKey = document.getElementById('btnSaveKey');
+    const btnEncrypt = document.getElementById('btnEncrypt');
+    const btnDecrypt = document.getElementById('btnDecrypt');
+    const inputText = document.getElementById('inputText');
+    const outputText = document.getElementById('outputText');
+    const inputLabel = document.getElementById('inputLabel');
+    const outputLabel = document.getElementById('outputLabel');
+    const inputCharCount = document.getElementById('inputCharCount');
+    const outputCharCount = document.getElementById('outputCharCount');
+    const btnRun = document.getElementById('btnRun');
+    const btnRunText = document.getElementById('btnRunText');
+    const btnRunIcon = document.getElementById('btnRunIcon');
+    const btnPaste = document.getElementById('btnPaste');
+    const btnClearInput = document.getElementById('btnClearInput');
+    const btnCopyOutput = document.getElementById('btnCopyOutput');
+    const btnClearOutput = document.getElementById('btnClearOutput');
+    const btnSwap = document.getElementById('btnSwap');
+    const ruleInspector = document.getElementById('ruleInspector');
+    const ruleInspectorHeader = document.getElementById('ruleInspectorHeader');
+
+    // ── Toast
+    function showToast(message, type = 'info', duration = 2800) {
+      const icons = { success: 'check-circle', error: 'x-circle', info: 'info' };
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `<i data-lucide="${icons[type]}" class="toast-icon" style="width:16px;height:16px;flex-shrink:0;"></i> ${message}`;
+      document.getElementById('toastContainer').appendChild(toast);
+      lucide.createIcons({ nodes: [toast] });
+      setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 250);
+      }, duration);
+    }
+
+    // ── Key handling
+    async function updateKey(val) {
+      if (!val.trim()) {
+        statusDot.classList.remove('active');
+        fingerprintEl.textContent = 'No key entered';
+        fingerprintEl.classList.remove('has-value');
+        currentSeed = null;
+        currentRules = null;
+        clearRuleInspector();
+        return;
+      }
+      try {
+        currentSeed = await generateSeed(val);
+        currentRules = generateRules(currentSeed);
+        const fp = getFingerprint(currentSeed);
+        fingerprintEl.textContent = fp;
+        fingerprintEl.classList.add('has-value');
+        statusDot.classList.add('active');
+        updateRuleInspector(currentRules, currentSeed);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    keyInput.addEventListener('input', () => {
+      // Sanitize in real-time: remove spaces and any char that isn't safe.
+      // We allow letters, digits, hyphens, underscores, dots.
+      const raw = keyInput.value;
+      const clean = sanitizeKey(raw);
+      if (clean !== raw) {
+        // Restore cursor position after overwrite
+        const pos = keyInput.selectionStart - (raw.length - clean.length);
+        keyInput.value = clean;
+        keyInput.setSelectionRange(pos, pos);
+      }
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => updateKey(keyInput.value), 200);
+    });
+
+    // Block space key directly so it never appears
+    keyInput.addEventListener('keydown', (e) => {
+      if (e.key === ' ') e.preventDefault();
+    });
+
+    // ── Toggle key visibility
+    btnToggleKeyVisibility.addEventListener('click', () => {
+      keyVisible = !keyVisible;
+      keyInput.type = keyVisible ? 'text' : 'password';
+      btnToggleKeyVisibility.innerHTML = keyVisible
+        ? '<i data-lucide="eye-off" style="width:16px;height:16px;"></i>'
+        : '<i data-lucide="eye" style="width:16px;height:16px;"></i>';
+      lucide.createIcons({ nodes: [btnToggleKeyVisibility] });
+    });
+
+    // ── Strengthen / Generate key
+    // If user has typed something: derive a longer key from it via SHA-256 hex.
+    // If input is empty: generate a fully random alphanumeric key.
+    btnGenKey.addEventListener('click', async () => {
+      let key;
+      const base = keyInput.value.trim();
+      if (base) {
+        // Derive a longer key from what the user typed: SHA-256 hex of the input.
+        // This is deterministic — "kose" always produces the same strengthened key.
+        const seed = await generateSeed(base);
+        key = Array.from(seed).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        showToast(`Key strengthened from "${base}"!`, 'success');
+      } else {
+        key = generateRandomKey(20);
+        showToast('Random key generated!', 'success');
+      }
+      keyInput.value = key;
+      keyInput.type = 'text';
+      keyVisible = true;
+      btnToggleKeyVisibility.innerHTML = '<i data-lucide="eye-off" style="width:16px;height:16px;"></i>';
+      lucide.createIcons({ nodes: [btnToggleKeyVisibility] });
+      updateKey(key);
+    });
+
+    // ── Mode toggle
+    function setMode(mode) {
+      currentMode = mode;
+      btnEncrypt.classList.toggle('active', mode === 'encrypt');
+      btnDecrypt.classList.toggle('active', mode === 'decrypt');
+      btnEncrypt.setAttribute('aria-pressed', mode === 'encrypt');
+      btnDecrypt.setAttribute('aria-pressed', mode === 'decrypt');
+      if (mode === 'encrypt') {
+        inputLabel.textContent = 'Plaintext';
+        outputLabel.textContent = 'Ciphertext';
+        inputText.placeholder = 'Type or paste your message…';
+        outputText.placeholder = 'Encrypted output will appear here…';
+        btnRunText.textContent = 'Encrypt Now';
+      } else {
+        inputLabel.textContent = 'Ciphertext';
+        outputLabel.textContent = 'Plaintext';
+        inputText.placeholder = 'Paste the encrypted text here…';
+        outputText.placeholder = 'Decrypted message will appear here…';
+        btnRunText.textContent = 'Decrypt Now';
+      }
+      outputText.value = '';
+      outputCharCount.textContent = '0 characters';
+    }
+
+    btnEncrypt.addEventListener('click', () => setMode('encrypt'));
+    btnDecrypt.addEventListener('click', () => setMode('decrypt'));
+
+    // ── Char counts
+    inputText.addEventListener('input', () => {
+      const n = inputText.value.length;
+      inputCharCount.textContent = n === 1 ? '1 character' : `${n} characters`;
+    });
+
+    // ── Run action
+    async function runAction() {
+      const text = inputText.value;
+      if (!text.trim()) { showToast('Please enter some text.', 'error'); return; }
+      if (!currentRules) { showToast('Please enter a key first.', 'error'); return; }
+
+      // Loading state
+      btnRun.disabled = true;
+      btnRunIcon.setAttribute('data-lucide', 'loader');
+      lucide.createIcons({ nodes: [btnRunIcon] });
+      btnRunIcon.firstChild && btnRunIcon.firstChild.classList && btnRunIcon.firstChild.classList.add('spinning');
+
+      try {
+        await new Promise(r => setTimeout(r, 60)); // allow repaint
+        let result;
+        if (currentMode === 'encrypt') {
+          result = encrypt(text, currentRules);
+          showToast('Encrypted successfully!', 'success');
+        } else {
+          result = decrypt(text, currentRules);
+          showToast('Decrypted successfully!', 'success');
+        }
+        outputText.value = result;
+        outputCharCount.textContent = `${result.length} characters`;
+      } catch (e) {
+        showToast('Error: ' + (e.message || 'Something went wrong'), 'error', 4000);
+        outputText.value = '';
+        outputCharCount.textContent = '0 characters';
+      } finally {
+        btnRun.disabled = false;
+        btnRunIcon.setAttribute('data-lucide', 'zap');
+        lucide.createIcons({ nodes: [btnRunIcon] });
+      }
+    }
+
+    btnRun.addEventListener('click', runAction);
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runAction();
+      }
+    });
+
+    // ── Paste, Clear, Copy, Swap
+    btnPaste.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        inputText.value = text;
+        inputCharCount.textContent = `${text.length} characters`;
+        showToast('Pasted from clipboard.', 'info');
+      } catch {
+        showToast('Clipboard access denied.', 'error');
+      }
+    });
+
+    btnClearInput.addEventListener('click', () => {
+      inputText.value = '';
+      inputCharCount.textContent = '0 characters';
+    });
+
+    btnCopyOutput.addEventListener('click', async () => {
+      if (!outputText.value) { showToast('Nothing to copy.', 'error'); return; }
+      try {
+        await navigator.clipboard.writeText(outputText.value);
+        showToast('Copied to clipboard!', 'success');
+      } catch {
+        showToast('Copy failed — select text manually.', 'error');
+      }
+    });
+
+    btnClearOutput.addEventListener('click', () => {
+      outputText.value = '';
+      outputCharCount.textContent = '0 characters';
+    });
+
+    btnSwap.addEventListener('click', () => {
+      const tmp = inputText.value;
+      inputText.value = outputText.value;
+      outputText.value = tmp;
+      inputCharCount.textContent = `${inputText.value.length} characters`;
+      outputCharCount.textContent = `${outputText.value.length} characters`;
+      setMode(currentMode === 'encrypt' ? 'decrypt' : 'encrypt');
+      showToast('Panels swapped.', 'info');
+    });
+
+    // ── Rule Inspector toggle
+    ruleInspectorHeader.addEventListener('click', () => {
+      ruleInspector.classList.toggle('collapsed');
+      const expanded = !ruleInspector.classList.contains('collapsed');
+      ruleInspectorHeader.setAttribute('aria-expanded', expanded);
+    });
+    ruleInspectorHeader.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ruleInspectorHeader.click(); }
+    });
+
+    function updateRuleInspector(rules, seedBytes) {
+      document.getElementById('rl-sub').textContent = `256-byte shuffle`;
+      document.getElementById('rl-shift').textContent = `+${rules.shift}`;
+      document.getElementById('rl-block').textContent = `${rules.blockSize} bytes`;
+      document.getElementById('rl-reorder').textContent = `0x${rules.reorderSeed.toString(16).toUpperCase().padStart(8, '0')}`;
+      document.getElementById('rl-xor').textContent = `0x${rules.xorMask.toString(16).toUpperCase().padStart(2, '0')}`;
+      document.getElementById('rl-enc').textContent = rules.encoding.toUpperCase();
+      ['rl-sub', 'rl-shift', 'rl-block', 'rl-reorder', 'rl-xor', 'rl-enc'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.remove('empty');
+      });
+    }
+
+    function clearRuleInspector() {
+      ['rl-sub', 'rl-shift', 'rl-block', 'rl-reorder', 'rl-xor', 'rl-enc'].forEach(id => {
+        const el = document.getElementById(id);
+        el.textContent = '—';
+        el.classList.add('empty');
+      });
+    }
+
+    // ── Saved Keys (localStorage)
+    const STORAGE_KEY = 'cipherdash_saved_keys';
+
+    function loadSavedKeys() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch { return []; }
+    }
+
+    function saveSavedKeys(keys) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+    }
+
+    function renderSavedKeys() {
+      const keys = loadSavedKeys();
+      savedKeysList.innerHTML = '';
+      if (keys.length === 0) {
+        savedKeysList.appendChild(emptyKeysMsg);
+        emptyKeysMsg.style.display = '';
+        return;
+      }
+      emptyKeysMsg.style.display = 'none';
+      keys.forEach((k, i) => {
+        const item = document.createElement('div');
+        item.className = 'saved-key-item';
+        if (keyInput.value === k.key) item.classList.add('active-key');
+        item.innerHTML = `
+        <span class="saved-key-name" title="${k.name}">${k.name}</span>
+        <span class="saved-key-fp">${k.fingerprint}</span>
+        <button class="btn-delete-key" data-index="${i}" aria-label="Delete key ${k.name}" title="Delete">
+          <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+        </button>
+      `;
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-delete-key')) return;
+          keyInput.value = k.key;
+          keyInput.type = 'text';
+          keyVisible = true;
+          updateKey(k.key);
+          renderSavedKeys();
+          showToast(`Key "${k.name}" loaded.`, 'info');
+        });
+        item.querySelector('.btn-delete-key').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const all = loadSavedKeys();
+          all.splice(i, 1);
+          saveSavedKeys(all);
+          renderSavedKeys();
+          showToast('Key deleted.', 'info');
+        });
+        savedKeysList.appendChild(item);
+      });
+      lucide.createIcons({ nodes: [savedKeysList] });
+    }
+
+    btnSaveKey.addEventListener('click', async () => {
+      const name = saveKeyName.value.trim();
+      if (!name) { showToast('Enter a name for this key.', 'error'); return; }
+      if (!keyInput.value.trim()) { showToast('No key to save.', 'error'); return; }
+      if (!currentSeed) { showToast('Key is still loading, try again.', 'error'); return; }
+      const fp = getFingerprint(currentSeed);
+      const all = loadSavedKeys();
+      if (all.find(k => k.name === name)) {
+        showToast(`A key named "${name}" already exists.`, 'error');
+        return;
+      }
+      all.push({ name, key: keyInput.value, fingerprint: fp });
+      saveSavedKeys(all);
+      saveKeyName.value = '';
+      renderSavedKeys();
+      showToast(`Key "${name}" saved!`, 'success');
+    });
+
+    // ── Init
+    renderSavedKeys();
+    setMode('encrypt');
+  </script>
+</body>
+
+</html>
